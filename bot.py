@@ -44,7 +44,7 @@ if not DISCORD_TOKEN:
 gemini = None
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini = genai.GenerativeModel("gemini-2.0-flash")
+    gemini = genai.GenerativeModel("gemini-1.5-flash-latest")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -148,23 +148,27 @@ Search query: "{query}"
 Messages:
 {messages_text}"""
 
-    response = gemini.generate_content(prompt)
-    response_text = response.text
+    try:
+        response = gemini.generate_content(prompt)
+        response_text = response.text
 
-    # Parse matched IDs
-    matched_ids = set()
-    for line in response_text.split("\n"):
-        line = line.strip()
-        if line.startswith("MATCH:"):
-            matched_ids.add(line.replace("MATCH:", "").strip())
+        # Parse matched IDs
+        matched_ids = set()
+        for line in response_text.split("\n"):
+            line = line.strip()
+            if line.startswith("MATCH:"):
+                matched_ids.add(line.replace("MATCH:", "").strip())
 
-    matched = [m for m in messages if m["id"] in matched_ids]
+        matched = [m for m in messages if m["id"] in matched_ids]
 
-    # Fall back to keyword search if Gemini found nothing
-    if not matched:
-        matched = keyword_search(query, messages)
+        # Fall back to keyword search if Gemini found nothing
+        if not matched:
+            matched = keyword_search(query, messages)
 
-    return matched
+        return matched
+    except Exception:
+        # Fall back to keyword search if Gemini fails
+        return keyword_search(query, messages)
 
 
 @bot.event
