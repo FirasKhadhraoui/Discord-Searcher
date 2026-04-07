@@ -151,23 +151,29 @@ Messages:
     try:
         response = gemini.generate_content(prompt)
         response_text = response.text
+        print(f"Gemini response:\n{response_text}")
 
         # Parse matched IDs
         matched_ids = set()
         for line in response_text.split("\n"):
             line = line.strip()
             if line.startswith("MATCH:"):
-                matched_ids.add(line.replace("MATCH:", "").strip())
+                msg_id = line.replace("MATCH:", "").strip()
+                matched_ids.add(msg_id)
+
+        print(f"Matched IDs: {matched_ids}")
 
         matched = [m for m in messages if m["id"] in matched_ids]
+        print(f"Matched messages: {len(matched)}")
 
         # Fall back to keyword search if Gemini found nothing
         if not matched:
+            print("No matches from Gemini, falling back to keyword search")
             matched = keyword_search(query, messages)
 
         return matched
-    except Exception:
-        # Fall back to keyword search if Gemini fails
+    except Exception as e:
+        print(f"Gemini error: {e}")
         return keyword_search(query, messages)
 
 
