@@ -239,7 +239,7 @@ async def search(
                     f"**{i}.** [{msg['author']} — {msg['timestamp']}]({msg['url']})\n"
                     f"> {content_preview}\n"
                 )
-                if len(results_text) + len(line) > 4000:
+                if len(results_text) + len(line) > 1000:
                     break
                 results_text += line
 
@@ -332,7 +332,7 @@ async def search_multi(
                     f"**{i}.** [{channel_tag}{msg['author']} — {msg['timestamp']}]({msg['url']})\n"
                     f"> {content_preview}\n"
                 )
-                if len(results_text) + len(line) > 4000:
+                if len(results_text) + len(line) > 1000:
                     break
                 results_text += line
 
