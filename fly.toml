@@ -1,0 +1,9 @@
+app = "discord-searcher"
+primary_region = "cdg"
+
+[build]
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
