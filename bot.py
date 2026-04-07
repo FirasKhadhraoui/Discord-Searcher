@@ -130,17 +130,24 @@ def search_with_gemini(query: str, messages: list[dict]) -> list[dict]:
         messages_text = messages_text[:500_000]
 
     prompt = f"""You are a Discord message search assistant.
-Find messages that match the search query.
+Find messages that STRICTLY and DIRECTLY match the search query.
 
 Each message is formatted as:
 [ID:message_id] [timestamp] author: content
 
 Rules:
-- Return ONLY the IDs of matching messages, one per line, in format: MATCH:message_id
+- Return ONLY the IDs of messages that are a DIRECT match to the query
+- Do NOT return loosely related messages
+- Return in format: MATCH:message_id (one per line)
 - After all matches, write a brief summary
 - If no matches, say NO_MATCHES and explain why
-- Match by topic, keywords, links, usernames, or semantic meaning
-- Rank by relevance, return at most 10 matches
+- Be strict: only return messages that clearly match the intent of the query
+- Return at most 10 matches
+
+Examples:
+- Query "steam account" → only return messages containing steam account info, NOT random links
+- Query "github link" → only return messages with github.com URLs, NOT other links
+- Query "meeting notes" → only return messages about meetings, NOT unrelated text
 
 Search query: "{query}"
 
