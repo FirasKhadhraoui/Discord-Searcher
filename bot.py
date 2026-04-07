@@ -9,6 +9,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 
@@ -34,9 +35,16 @@ threading.Thread(target=run_health_server, daemon=True).start()
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not DISCORD_TOKEN:
     raise ValueError("DISCORD_TOKEN is not set in your .env file")
+
+# Set up Gemini if API key is provided
+gemini = None
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini = genai.GenerativeModel("gemini-2.0-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -108,6 +116,57 @@ def keyword_search(query: str, messages: list[dict]) -> list[dict]:
     return [msg for _, msg in results[:10]]
 
 
+def search_with_gemini(query: str, messages: list[dict]) -> list[dict]:
+    """Use Gemini AI to find relevant messages."""
+    lines = []
+    for msg in messages:
+        line = f"[ID:{msg['id']}] [{msg['timestamp']}] {msg['author']}: {msg['content']}"
+        if msg["attachments"]:
+            line += f" [Attachments: {', '.join(msg['attachments'])}]"
+        lines.append(line)
+    messages_text = "\n".join(lines)
+
+    # Truncate if too long
+    if len(messages_text) > 500_000:
+        messages_text = messages_text[:500_000]
+
+    prompt = f"""You are a Discord message search assistant.
+Find messages that match the search query.
+
+Each message is formatted as:
+[ID:message_id] [timestamp] author: content
+
+Rules:
+- Return ONLY the IDs of matching messages, one per line, in format: MATCH:message_id
+- After all matches, write a brief summary
+- If no matches, say NO_MATCHES and explain why
+- Match by topic, keywords, links, usernames, or semantic meaning
+- Rank by relevance, return at most 10 matches
+
+Search query: "{query}"
+
+Messages:
+{messages_text}"""
+
+    response = gemini.generate_content(prompt)
+    response_text = response.text
+
+    # Parse matched IDs
+    matched_ids = set()
+    for line in response_text.split("\n"):
+        line = line.strip()
+        if line.startswith("MATCH:"):
+            matched_ids.add(line.replace("MATCH:", "").strip())
+
+    matched = [m for m in messages if m["id"] in matched_ids]
+
+    # Fall back to keyword search if Gemini found nothing
+    if not matched:
+        matched = keyword_search(query, messages)
+
+    return matched
+
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
@@ -148,9 +207,16 @@ async def search(
             await status_msg.edit(content="❌ No messages found in that channel.")
             return
 
-        await status_msg.edit(content=f"🔎 Searching **{len(messages)}** messages...")
+        if gemini:
+            await status_msg.edit(content=f"🤖 Searching **{len(messages)}** messages with Gemini AI...")
+        else:
+            await status_msg.edit(content=f"🔎 Searching **{len(messages)}** messages...")
 
-        matched = keyword_search(query, messages)
+        if gemini:
+            loop = asyncio.get_event_loop()
+            matched = await loop.run_in_executor(None, search_with_gemini, query, messages)
+        else:
+            matched = keyword_search(query, messages)
 
         embed = discord.Embed(
             title=f"🔍 Search Results: \"{query}\"",
