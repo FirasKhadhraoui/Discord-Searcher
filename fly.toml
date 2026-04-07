@@ -4,6 +4,9 @@ primary_region = "cdg"
 [build]
   dockerfile = "Dockerfile"
 
+[processes]
+  worker = "python bot.py"
+
 [[vm]]
   memory = "256mb"
   cpu_kind = "shared"
