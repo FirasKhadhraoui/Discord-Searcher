@@ -9,7 +9,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 
@@ -43,8 +43,7 @@ if not DISCORD_TOKEN:
 # Set up Gemini if API key is provided
 gemini = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini = genai.GenerativeModel("gemini-1.5-flash-latest")
+    gemini = genai.Client(api_key=GEMINI_API_KEY)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -149,7 +148,10 @@ Messages:
 {messages_text}"""
 
     try:
-        response = gemini.generate_content(prompt)
+        response = gemini.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
         response_text = response.text
         print(f"Gemini response:\n{response_text}")
 
@@ -245,7 +247,7 @@ async def search(
                     f"**{i}.** [{msg['author']} — {msg['timestamp']}]({msg['url']})\n"
                     f"> {content_preview}\n"
                 )
-                if len(results_text) + len(line) > 1000:
+                if len(results_text) + len(line) > 900:
                     break
                 results_text += line
 
@@ -338,7 +340,7 @@ async def search_multi(
                     f"**{i}.** [{channel_tag}{msg['author']} — {msg['timestamp']}]({msg['url']})\n"
                     f"> {content_preview}\n"
                 )
-                if len(results_text) + len(line) > 1000:
+                if len(results_text) + len(line) > 900:
                     break
                 results_text += line
 
